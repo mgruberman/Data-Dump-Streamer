@@ -74,8 +74,14 @@ extern "C" {
         if( SvMAGICAL(sv)                               \
             && (mg = mg_find(sv, PERL_MAGIC_backref) )  \
         ){                                              \
-            AV *av = (AV *)mg->mg_obj;                  \
-            RETVAL += av_len(av)+1;                     \
+            SV **svp = (SV**)mg->mg_obj;                \
+            if (*svp) {                                 \
+                if (SvTYPE(*svp) == SVt_PVAV) {         \
+                    RETVAL += av_len((AV*)*svp)+1;      \
+                } else {                                \
+                    RETVAL ++;                          \
+                }                                       \
+            }                                           \
         }                                               \
     } while (0)
 #else
