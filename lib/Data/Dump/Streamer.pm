@@ -124,7 +124,35 @@ BEGIN {
 
     #warn $VERSION;
     Data::Dump::Streamer->bootstrap();
-    if ($]>=5.009004) {
+    if ($]>=5.013010) {
+        # As I write this, 5.13.10 doesn't exist so I'm guessing that
+        # we can begin using the ordinary core function again.
+        eval q[
+            use re qw(regexp_pattern);
+            *regex= *regexp_pattern;
+        ] or die $@;
+    }
+    elsif ($]>=5.013006) {
+        # Perl-5.13.6 through perl-5.13.9 began returning modifier
+        # flags that weren't yet legal at the time.
+        eval q[
+            use re qw(regexp_pattern);
+            sub regex {
+                if (wantarray) {
+                    my ($pat,$mod) = regexp_pattern($_[0]);
+                    if ($mod) {
+                        $mod =~ tr/dlua?//d;
+                    }
+                    return ($pat,$mod);
+                }
+                else {
+                    return scalar regexp_pattern($_[0]);
+                }
+            }
+            1;
+        ] or die $@;
+    }
+    elsif ($]>=5.009004) {
         eval q[
             use re qw(regexp_pattern);
             *regex= *regexp_pattern;
