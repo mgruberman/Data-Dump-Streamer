@@ -1875,7 +1875,13 @@ sub _dump_apply_fix { #handle fix statements and GLOB's here.
             ) {
                 # from link from [ysth]: http://groups.google.com/groups?selm=laUs8gzkgOlT092yn%40efn.org
                 # translate arg (or reference to it) into a B::* object
-                my $Bobj = B::svref_2object(\*$lhs);
+
+                # To work-around perl commit
+                # 2acc3314e31a9342e325f35c5b592967c9850c9b, keep the
+                # value \*$lhs alive while we inspect it as a B object
+                # or else it'll be reaped while we're using it.
+                my $lhs_glob = \*$lhs;
+                my $Bobj = B::svref_2object($lhs_glob);
 
                 # if passed a glob or globref, get the format
                 $Bobj = B::GV::FORM($Bobj) if ref $Bobj eq 'B::GV';
