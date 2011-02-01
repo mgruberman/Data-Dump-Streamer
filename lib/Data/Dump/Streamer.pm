@@ -1,23 +1,25 @@
 package Data::Dump::Streamer;
 use strict;
 use warnings;
-use Exporter;
-use DynaLoader;
-use Text::Balanced qw(extract_bracketed);
-use B::Deparse;
-use B qw(svref_2object);
-use B::Utils qw(walkoptree_filtered opgrep);
-use IO::File;
 
+use B ();
+use B::Deparse ();
+use B::Utils ();
 use Data::Dumper ();
+use DynaLoader ();
+use Exporter ();
+use IO::File ();
+use Symbol ();
+use Text::Abbrev ();
+use Text::Balanced ();
+use overload ();
+
 use Data::Dump::Streamer::_::Printers;
-use Symbol;
-use Text::Abbrev qw(abbrev);
+
 # use overload qw("" printit); # does diabolical stuff.
 use warnings;
 use warnings::register;
 
-require overload;
 use vars qw(
              $VERSION
              $AUTOLOAD
@@ -903,7 +905,7 @@ sub remove_deref {
         ($sigil,$brace)=($1,$var)
     } else {
         local $@;
-        ($brace,$rest,$sigil)= extract_bracketed( $var, '{q}',qr/[\@\%\$]/ );
+        ($brace,$rest,$sigil)= Text::Balanced::extract_bracketed( $var, '{q}',qr/[\@\%\$]/ );
     }
     if ($brace and !$rest) {
         $brace=~s/^\{(.*)\}$/$1/;
@@ -2398,9 +2400,8 @@ my %default_key_sorters= (
 );
 $default_key_sorters{alphabetical}=$default_key_sorters{lexical};
 $default_key_sorters{intelligent}=$default_key_sorters{smart};
-use Text::Abbrev;
 for my $h (\%default_key_sorters) {
-    my $abr=abbrev keys %$h;
+    my $abr=Text::Abbrev::abbrev keys %$h;
     foreach my $short (keys %$abr) {
         $h->{$short}=$h->{$abr->{$short}};
     }
@@ -2648,7 +2649,7 @@ sub _dump_code {
     unless ($self->{style}{deparse}) {
         $self->{fh}->print($self->{style}{codestub});
     } else { #deparseopts
-        my $cv=svref_2object($item);
+        my $cv=B::svref_2object($item);
 
         if (ref($cv->ROOT)=~/NULL/) {
             my $gv=$cv->GV;
@@ -3635,7 +3636,7 @@ sub _get_lexicals {
         return $names;
     }
 
-    my $svo=svref_2object($cv);
+    my $svo=B::svref_2object($cv);
     my @pl_array = $svo->PADLIST->ARRAY;
 
     my @name_obj = $pl_array[0]->ARRAY;
@@ -3649,9 +3650,9 @@ sub _get_lexicals {
 
     my %inited;
     my %used;
-    walkoptree_filtered(
+    B::Utils::walkoptree_filtered(
             $svo->ROOT,
-            sub { opgrep { name => [ qw[ padsv padav padhv ] ] }, @_ },
+            sub { B::Utils::opgrep { name => [ qw[ padsv padav padhv ] ] }, @_ },
             sub {
                 my ( $op, @items )=@_;
                 my $targ = $op->targ;
