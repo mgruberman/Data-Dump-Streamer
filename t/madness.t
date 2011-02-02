@@ -312,7 +312,7 @@ $HASH1 = {
                     2
                   ],
            CR  => sub {
-                    BEGIN {${^WARNING_BITS} = "UUUUUUUUUUUU\001"}
+                    BEGIN {${^WARNING_BITS} = "UUUUUUUUUUUU"}
                     use strict 'refs';
                     'code';
                   },
