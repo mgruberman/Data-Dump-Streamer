@@ -1,3 +1,6 @@
+...
+Disable overloading in a <=5.8.8 safe way
+
 2.31
 React to Strawberry perl $. strangeness [RT #58528]
 

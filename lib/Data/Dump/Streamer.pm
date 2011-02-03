@@ -206,6 +206,35 @@ EO_HU
         };
         *lock_keys_plus=sub(\%;@){lock_ref_keys_plus(@_)};
     }
+    if ($] <= 5.008008) {
+        *disable_overloading = \&SvAMAGIC_off;
+        *restore_overloading = sub ($$) {
+            SvAMAGIC_on($_[0], undef);
+
+            # Visit all classes we are ISA and fetch the () entry from
+            # every stash.
+            my %done;
+            my %todo = (
+                $_[0]     => undef,
+                UNIVERSAL => undef,
+            );
+            no strict 'refs';
+            for my $todo_class (keys %todo) {
+                delete $todo{$todo_class};
+                $done{$todo_class} = undef;
+                for my $isa (@{"${todo_class}::ISA"}) {
+                    $todo{$isa} = undef unless exists $done{$isa};
+                }
+            }
+        };
+    } else {
+        *disable_overloading = sub ($) {
+            bless $_[0], 'Does::Not::Exist';
+        };
+        *restore_overloading = sub ($$) {
+            bless $_[0], $_[1];
+        };
+    }
     my %fail=map { ( $_ => 1 ) } @EXPORT_FAIL;
     @EXPORT_OK=grep { !$fail{$_} } @EXPORT_OK;
 }
@@ -1526,7 +1555,7 @@ PASS:{
             my $overloaded=undef;
             my $isoverloaded=0;
             if (defined $class and overload::Overloaded($item)) {
-                bless $item, 'Does::Not::Exist';
+                disable_overloading( $item );
                 $overloaded= $class;
                 $isoverloaded= 1;
             }
@@ -1639,7 +1668,7 @@ PASS:{
                     if $ENV{DDS_STRICT};
             }
             if ($isoverloaded) {
-                $item= bless $item, $overloaded;
+                restore_overloading( $item, $overloaded );
             }
         }
         if ( $pass++ == 1 ) {
@@ -1865,7 +1894,7 @@ sub _dump_apply_fix { #handle fix statements and GLOB's here.
                 overload::Overloaded( $lhs ) )
             {
                 $overloaded=blessed $lhs;
-                bless $lhs,"Does::Not::Exist";
+                disable_overloading( $lhs );
                 $isoverloaded=1;
             }
             foreach my $t ($self->_glob_slots(''))
@@ -1926,7 +1955,7 @@ sub _dump_apply_fix { #handle fix statements and GLOB's here.
                 }
             }
             if ($isoverloaded) {
-                $lhs=bless $lhs,$overloaded;
+                restore_overloading( $lhs, $overloaded );
             }
 
 
@@ -2887,7 +2916,7 @@ sub _dump_rv {
     }
     my $isoverloaded=0;
     if (defined $class and overload::Overloaded($item)) {
-        bless $item, 'Does::Not::Exist';
+        disable_overloading( $item );
         $overloaded= $class;
         $isoverloaded= 1;
     }
@@ -2968,7 +2997,7 @@ sub _dump_rv {
             $self->_add_fix('bless',$idx,$overloaded);
         }
         if ($isoverloaded) {
-            $item=bless $item, $overloaded;
+            restore_overloading( $item, $overloaded );
         }
     }
     if ($fix_lock && !defined($class)) {
